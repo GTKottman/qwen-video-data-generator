@@ -58,6 +58,19 @@ CREATE TABLE IF NOT EXISTS media_tokens (
     consumed INTEGER DEFAULT 0
 );
 
+CREATE TABLE IF NOT EXISTS hosted_files (
+    id TEXT PRIMARY KEY,
+    original_filename TEXT NOT NULL,
+    stored_path TEXT NOT NULL,
+    content_type TEXT NOT NULL,
+    size_bytes INTEGER NOT NULL,
+    duration_ms INTEGER,
+    width INTEGER,
+    height INTEGER,
+    thumbnail_path TEXT,
+    created_at TEXT NOT NULL
+);
+
 CREATE INDEX IF NOT EXISTS idx_job_logs_job_id ON job_logs(job_id);
 """
 

@@ -2,54 +2,56 @@
 {% block title %}Dashboard{% endblock %}
 {% block content %}
 <div class="card">
-  <h1>Analyze a video</h1>
+  <h1>Host a video for Qwen</h1>
   <p class="subtitle">
-    Upload a video. It's converted locally on this server (downscaled toward ~1.85GB, floor of
-    720p, clipped to 2 hours if longer), sent to Qwen3.8-Omni-Flash for two-pass classification,
-    then the video is deleted — only the results and a thumbnail are kept.
+    Drop a video below. It's checked against Qwen3.8-Omni-Flash's limits — at most 1 hour,
+    under 2GB, exactly 720p or 1080p — and, if it passes, hosted here with a permanent URL you
+    can paste into the Qwen client app.
   </p>
-  <div class="alert alert-warning">
-    <strong>Pre-convert before uploading.</strong> This server no longer accepts raw uploads
-    larger than {{ max_upload_gb }}GB. If your file is bigger than that (a 4K master, a long
-    recording, etc.), shrink it locally first with <code>client/preconvert.py</code> — or run
-    <code>client/start_conversion_ui.sh</code> for a simple GUI — then upload the converted file.
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <div class="alert alert-info">
+    Doesn't meet those limits? Shrink it locally first with <code>client/preconvert.py</code>
+    (or run <code>client/start_conversion_ui.sh</code> for a GUI), then upload the result.
   </div>
   <form method="post" action="/upload" enctype="multipart/form-data" id="upload-form">
-    <label for="title">Title (optional)</label>
-    <input type="text" id="title" name="title" placeholder="Untitled">
-    <label for="file">Video file</label>
-    <input type="file" id="file" name="file" accept=".mp4,.avi,.mkv,.mov,.flv,.wmv,.webm,.m4v"
-           data-max-bytes="{{ max_upload_bytes }}" required>
-    <button type="submit" id="upload-btn">Upload &amp; analyze</button>
+    <div class="upload-drop" id="dropzone">
+      <div id="dropzone-label">Drag a video here, or click to browse</div>
+      <input type="file" id="file" name="file" accept=".mp4,.avi,.mkv,.mov,.flv,.wmv,.webm,.m4v"
+             data-max-bytes="{{ max_upload_bytes }}" required style="display:none;">
+    </div>
+    <button type="submit" id="upload-btn">Upload</button>
   </form>
 </div>
 
 <div class="section-gap">
-  <h2>History</h2>
-  {% if not jobs %}
-  <p class="muted small">No videos processed yet.</p>
+  <h2>Hosted videos</h2>
+  {% if not files %}
+  <p class="muted small">No videos hosted yet.</p>
   {% else %}
   <div class="job-grid">
-    {% for job in jobs %}
-    <a class="job-card" href="/jobs/{{ job.id }}" style="display:block;">
-      {% if job.thumbnail_path %}
-      <img class="job-thumb" src="/jobs/{{ job.id }}/thumbnail" alt="">
+    {% for f in files %}
+    <div class="job-card">
+      {% if f.thumbnail_path %}
+      <img class="job-thumb" src="/files/{{ f.id }}/thumbnail" alt="">
       {% else %}
       <div class="job-thumb-empty">no preview</div>
       {% endif %}
       <div class="job-card-body">
-        <div class="job-title">{{ job.original_filename }}</div>
+        <div class="job-title">{{ f.original_filename }}</div>
         <div class="job-meta">
-          {% if job.status == 'done' %}<span class="badge badge-done">done</span>
-          {% elif job.status == 'error' %}<span class="badge badge-error">error</span>
-          {% else %}<span class="badge badge-progress">{{ job.status }}</span>{% endif %}
-          {% if job.safety_rating %}
-          <span class="badge {{ 'badge-safe' if job.safety_rating == 'safe' else 'badge-sensitive' }}">{{ job.safety_rating }}</span>
-          {% endif %}
-          {% if job.clipped %}<span class="small muted">clipped</span>{% endif %}
+          <span class="small muted">{{ f.resolution }}</span>
+          <span class="small muted">{{ f.duration_str }}</span>
+          <span class="small muted">{{ f.size_str }}</span>
         </div>
+        <div class="url-row">
+          <input type="text" readonly value="{{ f.url }}" class="url-input" onclick="this.select();">
+          <button type="button" class="btn-secondary copy-btn" data-url="{{ f.url }}">Copy</button>
+        </div>
+        <form method="post" action="/files/{{ f.id }}/delete" onsubmit="return confirm('Delete this hosted video?');">
+          <button type="submit" class="btn-secondary btn-danger">Delete</button>
+        </form>
       </div>
-    </a>
+    </div>
     {% endfor %}
   </div>
   {% endif %}
@@ -57,24 +59,64 @@
 {% endblock %}
 {% block scripts %}
 <script>
-document.getElementById('upload-form').addEventListener('submit', function (evt) {
+(function () {
+  var dropzone = document.getElementById('dropzone');
   var fileInput = document.getElementById('file');
-  var maxBytes = parseInt(fileInput.getAttribute('data-max-bytes'), 10);
-  var f = fileInput.files && fileInput.files[0];
-  if (f && maxBytes && f.size > maxBytes) {
-    evt.preventDefault();
-    var gb = (maxBytes / 1e9).toFixed(2);
-    var fileGb = (f.size / 1e9).toFixed(2);
-    alert(
-      'That file is ' + fileGb + 'GB, which is over the ' + gb + 'GB upload limit.\n\n' +
-      'Pre-convert it first with client/preconvert.py (or client/start_conversion_ui.sh for a ' +
-      'GUI), then upload the converted file.'
-    );
-    return;
-  }
+  var label = document.getElementById('dropzone-label');
+  var form = document.getElementById('upload-form');
   var btn = document.getElementById('upload-btn');
-  btn.disabled = true;
-  btn.textContent = 'Uploading…';
-});
+
+  function setFile(f) {
+    if (!f) return;
+    var maxBytes = parseInt(fileInput.getAttribute('data-max-bytes'), 10);
+    if (maxBytes && f.size > maxBytes * 2) {
+      // generous client-side sanity check only; the server does the real validation
+      alert('That file (' + (f.size / 1e9).toFixed(2) + 'GB) is far larger than Qwen\'s cap. ' +
+            'Pre-convert it first with client/preconvert.py.');
+      return;
+    }
+    var dt = new DataTransfer();
+    dt.items.add(f);
+    fileInput.files = dt.files;
+    label.textContent = f.name;
+  }
+
+  dropzone.addEventListener('click', function () { fileInput.click(); });
+  dropzone.addEventListener('dragover', function (evt) {
+    evt.preventDefault();
+    dropzone.classList.add('dragover');
+  });
+  dropzone.addEventListener('dragleave', function () { dropzone.classList.remove('dragover'); });
+  dropzone.addEventListener('drop', function (evt) {
+    evt.preventDefault();
+    dropzone.classList.remove('dragover');
+    var f = evt.dataTransfer.files && evt.dataTransfer.files[0];
+    setFile(f);
+  });
+  fileInput.addEventListener('change', function () {
+    var f = fileInput.files && fileInput.files[0];
+    if (f) label.textContent = f.name;
+  });
+
+  form.addEventListener('submit', function (evt) {
+    if (!fileInput.files || !fileInput.files.length) {
+      evt.preventDefault();
+      alert('Choose or drop a video first.');
+      return;
+    }
+    btn.disabled = true;
+    btn.textContent = 'Uploading…';
+  });
+
+  document.querySelectorAll('.copy-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+      navigator.clipboard.writeText(b.getAttribute('data-url')).then(function () {
+        var old = b.textContent;
+        b.textContent = 'Copied!';
+        setTimeout(function () { b.textContent = old; }, 1200);
+      });
+    });
+  });
+})();
 </script>
 {% endblock %}

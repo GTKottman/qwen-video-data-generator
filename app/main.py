@@ -1,8 +1,5 @@
 from __future__ import annotations
 
-import threading
-import time
-
 from fastapi import FastAPI, Request
 from fastapi.responses import RedirectResponse
 from fastapi.staticfiles import StaticFiles
@@ -12,29 +9,18 @@ from app.app_settings import is_setup_complete
 from app.auth import current_user
 from app.config import APP_SECRET
 from app.db import any_user_exists, init_db
-from app.media_tokens import sweep_expired
-from app.routes import auth_routes, dashboard, jobs_routes, media, settings_routes, setup
+from app.routes import auth_routes, dashboard, media, settings_routes, setup
 
-app = FastAPI(title="Qwen Video Classifier")
+app = FastAPI(title="Qwen Video Host")
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 
 PUBLIC_PREFIXES = ("/static/", "/m/")
 PUBLIC_EXACT = {"/health", "/favicon.ico"}
 
 
-def _token_sweeper() -> None:
-    while True:
-        time.sleep(300)
-        try:
-            sweep_expired()
-        except Exception:
-            pass
-
-
 @app.on_event("startup")
 def _startup() -> None:
     init_db()
-    threading.Thread(target=_token_sweeper, daemon=True).start()
 
 
 @app.middleware("http")
@@ -77,7 +63,6 @@ app.include_router(setup.router)
 app.include_router(auth_routes.router)
 app.include_router(settings_routes.router)
 app.include_router(dashboard.router)
-app.include_router(jobs_routes.router)
 app.include_router(media.router)
 
 

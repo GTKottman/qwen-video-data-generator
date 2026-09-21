@@ -7,9 +7,10 @@ DB_PATH = DATA_DIR / "app.db"
 TMP_DIR = DATA_DIR / "tmp"
 DATASETS_DIR = DATA_DIR / "datasets"
 THUMBS_DIR = DATA_DIR / "thumbnails"
+HOSTED_DIR = DATA_DIR / "hosted"
 SECRET_FILE = DATA_DIR / ".app_secret"
 
-for d in (DATA_DIR, TMP_DIR, DATASETS_DIR, THUMBS_DIR):
+for d in (DATA_DIR, TMP_DIR, DATASETS_DIR, THUMBS_DIR, HOSTED_DIR):
     d.mkdir(parents=True, exist_ok=True)
 
 
@@ -30,30 +31,15 @@ APP_SECRET = _load_or_create_secret()
 PORT = int(os.environ.get("PORT", "8000"))
 
 # The externally-reachable https://... origin for this deployment (e.g. what Coolify /
-# your reverse proxy exposes). Required so Qwen's servers can fetch the temporary
-# /m/<token> media links. Configurable in Settings; falls back to this env var.
+# your reverse proxy exposes). Required so the hosted /m/<id> video links are usable
+# from outside (e.g. by the separate Qwen client app). Configurable in Settings; falls
+# back to this env var.
 PUBLIC_BASE_URL_ENV = os.environ.get("PUBLIC_BASE_URL", "").rstrip("/")
 
-# Hard limits driven by the Qwen3.8-Omni-Flash public-URL video input spec
-# (documented: up to 2 GB, up to 2 hours). We target comfortably under the
-# cap to leave headroom for container/muxing overhead.
-MAX_DURATION_SECONDS = 2 * 60 * 60
-TARGET_MAX_BYTES = int(1.85 * 1024 ** 3)
-MIN_HEIGHT = 720
-
-# Uploads must already be pre-converted client-side (see client/preconvert.py) toward
-# the same TARGET_MAX_BYTES target before they reach this server — the server no longer
-# accepts arbitrarily large raw uploads. Small grace factor above the target to avoid
-# rejecting legitimate pre-converted files that land slightly over due to bitrate
-# control / container overhead.
-MAX_UPLOAD_BYTES = int(TARGET_MAX_BYTES * 1.05)
-
-QWEN_BASE_URLS = {
-    "international": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
-    "china": "https://dashscope.aliyuncs.com/compatible-mode/v1",
-}
-DEFAULT_QWEN_REGION = "international"
-QWEN_MODEL = "qwen3.8-omni-flash"
-
-# How long a direct-fetch media link stays valid for Qwen to retrieve the file.
-MEDIA_TOKEN_TTL_SECONDS = 4 * 60 * 60
+# Hard limits this site enforces on upload, driven by the Qwen3.8-Omni-Flash public-URL
+# video input spec: at most 1 hour, strictly under 2 GB, and exactly 720p or 1080p. The
+# site only validates — it never re-encodes. Anything that doesn't already meet these
+# must be fixed client-side first with client/preconvert.py.
+MAX_DURATION_SECONDS = 60 * 60
+MAX_UPLOAD_BYTES = 2 * 1024 ** 3
+ALLOWED_HEIGHTS = {720, 1080}

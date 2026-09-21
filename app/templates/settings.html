@@ -2,30 +2,19 @@
 {% block title %}Settings{% endblock %}
 {% block content %}
 <h1>Settings</h1>
-<p class="subtitle">Manage your Qwen API connection and account.</p>
+<p class="subtitle">Manage this host's public URL and your account.</p>
 
 <div class="card">
-  <h2>Qwen API key</h2>
+  <h2>Public hosting URL</h2>
   <p class="small muted" style="margin-top:-10px;">
-    {% if has_api_key %}An API key is currently configured.{% else %}No API key configured yet.{% endif %}
+    The externally-reachable base URL used to build each video's <code>/m/&lt;id&gt;</code> link.
   </p>
-  {% if api_error %}<div class="alert alert-error">{{ api_error }}</div>{% endif %}
-  {% if api_message %}<div class="alert alert-success">{{ api_message }}</div>{% endif %}
-  <form method="post" action="/settings/api-key">
-    <label for="api_key">New API key</label>
-    <input type="password" id="api_key" name="api_key" autocomplete="off" placeholder="Enter to replace the current key" required>
-
-    <label for="region">Account region</label>
-    <select id="region" name="region">
-      {% for key, url in regions.items() %}
-      <option value="{{ key }}" {{ 'selected' if key == region else '' }}>{{ key|capitalize }} ({{ url }})</option>
-      {% endfor %}
-    </select>
-
+  {% if hosting_error %}<div class="alert alert-error">{{ hosting_error }}</div>{% endif %}
+  {% if hosting_message %}<div class="alert alert-success">{{ hosting_message }}</div>{% endif %}
+  <form method="post" action="/settings/hosting-url">
     <label for="public_base_url">Public base URL of this app</label>
     <input type="text" id="public_base_url" name="public_base_url" value="{{ public_base_url }}" required>
-
-    <button type="submit">Verify &amp; save</button>
+    <button type="submit">Save</button>
   </form>
 </div>
 

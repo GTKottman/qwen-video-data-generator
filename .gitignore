@@ -5,3 +5,7 @@ venv/
 data/
 *.egg-info/
 .env
+
+# Qwen client app: a personal desktop tool that USES the hosted site, not part of
+# the site itself — not meant to be committed here.
+qwen_client/

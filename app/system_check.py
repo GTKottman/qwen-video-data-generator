@@ -4,9 +4,7 @@ import shutil
 import subprocess
 from dataclasses import dataclass
 
-import httpx
-
-from app.config import DATA_DIR, QWEN_BASE_URLS
+from app.config import DATA_DIR
 
 
 @dataclass
@@ -46,17 +44,5 @@ def check_disk_space(min_gb: float = 5.0) -> CheckResult:
     return CheckResult("disk space", ok, f"{free_gb:.1f} GB free at {DATA_DIR}")
 
 
-def check_network() -> CheckResult:
-    last_err = ""
-    for region, url in QWEN_BASE_URLS.items():
-        host = url.split("/compatible-mode")[0]
-        try:
-            resp = httpx.get(host, timeout=6.0)
-            return CheckResult("network", True, f"reached {region} endpoint ({resp.status_code})")
-        except Exception as exc:  # noqa: BLE001
-            last_err = str(exc)
-    return CheckResult("network", False, f"could not reach Alibaba Cloud Model Studio: {last_err}")
-
-
 def run_all() -> list[CheckResult]:
-    return [check_ffmpeg(), check_ffprobe(), check_disk_space(), check_network()]
+    return [check_ffmpeg(), check_ffprobe(), check_disk_space()]
