@@ -4,15 +4,22 @@
 <div class="card">
   <h1>Analyze a video</h1>
   <p class="subtitle">
-    Upload a video. It's converted locally on this server (downscaled toward ~2GB, floor of 720p,
-    clipped to 2 hours if longer), sent to Qwen3.8-Omni-Flash for two-pass classification, then the
-    video is deleted — only the results and a thumbnail are kept.
+    Upload a video. It's converted locally on this server (downscaled toward ~1.85GB, floor of
+    720p, clipped to 2 hours if longer), sent to Qwen3.8-Omni-Flash for two-pass classification,
+    then the video is deleted — only the results and a thumbnail are kept.
   </p>
+  <div class="alert alert-warning">
+    <strong>Pre-convert before uploading.</strong> This server no longer accepts raw uploads
+    larger than {{ max_upload_gb }}GB. If your file is bigger than that (a 4K master, a long
+    recording, etc.), shrink it locally first with <code>client/preconvert.py</code> — or run
+    <code>client/start_conversion_ui.sh</code> for a simple GUI — then upload the converted file.
+  </div>
   <form method="post" action="/upload" enctype="multipart/form-data" id="upload-form">
     <label for="title">Title (optional)</label>
     <input type="text" id="title" name="title" placeholder="Untitled">
     <label for="file">Video file</label>
-    <input type="file" id="file" name="file" accept=".mp4,.avi,.mkv,.mov,.flv,.wmv,.webm,.m4v" required>
+    <input type="file" id="file" name="file" accept=".mp4,.avi,.mkv,.mov,.flv,.wmv,.webm,.m4v"
+           data-max-bytes="{{ max_upload_bytes }}" required>
     <button type="submit" id="upload-btn">Upload &amp; analyze</button>
   </form>
 </div>
@@ -50,7 +57,21 @@
 {% endblock %}
 {% block scripts %}
 <script>
-document.getElementById('upload-form').addEventListener('submit', function () {
+document.getElementById('upload-form').addEventListener('submit', function (evt) {
+  var fileInput = document.getElementById('file');
+  var maxBytes = parseInt(fileInput.getAttribute('data-max-bytes'), 10);
+  var f = fileInput.files && fileInput.files[0];
+  if (f && maxBytes && f.size > maxBytes) {
+    evt.preventDefault();
+    var gb = (maxBytes / 1e9).toFixed(2);
+    var fileGb = (f.size / 1e9).toFixed(2);
+    alert(
+      'That file is ' + fileGb + 'GB, which is over the ' + gb + 'GB upload limit.\n\n' +
+      'Pre-convert it first with client/preconvert.py (or client/start_conversion_ui.sh for a ' +
+      'GUI), then upload the converted file.'
+    );
+    return;
+  }
   var btn = document.getElementById('upload-btn');
   btn.disabled = true;
   btn.textContent = 'Uploading…';

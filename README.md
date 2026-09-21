@@ -42,6 +42,38 @@ a thumbnail, structured logs, and the dataset files are kept.
    to Alibaba Cloud), then your Qwen API key + region + the public base URL from step 4
    (verified live before it's saved).
 
+## Client-side pre-conversion (required for large files)
+
+The server enforces `MAX_UPLOAD_BYTES` (`app/config.py`, ~1.94GB — the ~1.85GB target
+plus a small grace factor) and rejects anything larger before it's fully uploaded, both
+via an upfront `Content-Length` check and by aborting mid-stream if a client lies about
+size. If your source file is bigger than that (a 4K master, a multi-hour recording),
+pre-convert it locally first.
+
+`client/preconvert.py` is a standalone script (stdlib only, needs `ffmpeg`/`ffprobe`
+on PATH) that runs the same downscale/bitrate/clip logic as the server
+(`app/ffmpeg_utils.py`) on your own machine before you upload. The server still
+re-encodes everything it receives (it never trusts client output), so this doesn't skip
+validation — it just means uploading a file that's already near the target size instead
+of the original, which is much less upload time/bandwidth and avoids reverse-proxy
+body-size limits on very large raw uploads.
+
+```bash
+python3 client/preconvert.py input.mkv                # writes input.preconverted.mp4
+python3 client/preconvert.py input.mkv -o ready.mp4    # custom output path
+python3 client/preconvert.py input.mkv --dry-run       # show the plan, don't encode
+```
+
+Then upload the resulting file through the app as usual.
+
+Prefer a GUI? `client/start_conversion_ui.sh` checks for python3/tkinter/ffmpeg and launches
+`client/conversion_ui.py`, a small Tkinter window (pick input/output, optional dry-run, a
+progress bar) that wraps the same `preconvert.py` logic:
+
+```bash
+./client/start_conversion_ui.sh
+```
+
 ## Local development
 
 ```bash

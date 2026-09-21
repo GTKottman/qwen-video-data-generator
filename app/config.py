@@ -41,6 +41,13 @@ MAX_DURATION_SECONDS = 2 * 60 * 60
 TARGET_MAX_BYTES = int(1.85 * 1024 ** 3)
 MIN_HEIGHT = 720
 
+# Uploads must already be pre-converted client-side (see client/preconvert.py) toward
+# the same TARGET_MAX_BYTES target before they reach this server — the server no longer
+# accepts arbitrarily large raw uploads. Small grace factor above the target to avoid
+# rejecting legitimate pre-converted files that land slightly over due to bitrate
+# control / container overhead.
+MAX_UPLOAD_BYTES = int(TARGET_MAX_BYTES * 1.05)
+
 QWEN_BASE_URLS = {
     "international": "https://dashscope-intl.aliyuncs.com/compatible-mode/v1",
     "china": "https://dashscope.aliyuncs.com/compatible-mode/v1",
