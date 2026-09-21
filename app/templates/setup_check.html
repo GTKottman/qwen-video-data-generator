@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% block title %}Setup · System check{% endblock %}
+{% block page_class %}page-narrow{% endblock %}
+{% block content %}
+<div class="wizard-steps">
+  <div class="wizard-step done"></div>
+  <div class="wizard-step active"></div>
+  <div class="wizard-step"></div>
+</div>
+<div class="card">
+  <h1>System check</h1>
+  <p class="subtitle">Step 2 of 3 — confirming this server can convert and analyze video.</p>
+
+  {% for r in results %}
+  <div class="check-row">
+    <div class="check-icon {{ 'ok' if r.ok else 'fail' }}">{{ '✓' if r.ok else '✕' }}</div>
+    <div>
+      <div class="check-name">{{ r.name }}</div>
+      <div class="check-detail">{{ r.detail }}</div>
+    </div>
+  </div>
+  {% endfor %}
+
+  {% if not all_ok %}
+  <div class="alert alert-error section-gap">
+    One or more required checks failed. Fix the issue on the server (e.g. install ffmpeg) and reload this page.
+  </div>
+  <a class="btn btn-secondary" href="/setup/check">Re-check</a>
+  {% else %}
+  <form method="post" action="/setup/check/continue" class="section-gap">
+    <button type="submit">Continue</button>
+  </form>
+  {% endif %}
+</div>
+{% endblock %}

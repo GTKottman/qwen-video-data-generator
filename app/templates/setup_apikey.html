@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+{% block title %}Setup · Qwen API key{% endblock %}
+{% block page_class %}page-narrow{% endblock %}
+{% block content %}
+<div class="wizard-steps">
+  <div class="wizard-step done"></div>
+  <div class="wizard-step done"></div>
+  <div class="wizard-step active"></div>
+</div>
+<div class="card">
+  <h1>Connect Qwen3.8-Omni-Flash</h1>
+  <p class="subtitle">Step 3 of 3 — your Alibaba Cloud Model Studio API key. We'll verify it before saving.</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/setup/apikey">
+    <label for="api_key">API key</label>
+    <input type="password" id="api_key" name="api_key" autocomplete="off" required>
+
+    <label for="region">Account region</label>
+    <select id="region" name="region">
+      {% for key, url in regions.items() %}
+      <option value="{{ key }}">{{ key|capitalize }} ({{ url }})</option>
+      {% endfor %}
+    </select>
+
+    <label for="public_base_url">Public base URL of this app</label>
+    <input type="text" id="public_base_url" name="public_base_url" placeholder="https://video.yourdomain.com"
+           value="{{ public_base_url }}" required>
+    <p class="small muted" style="margin-top:-10px;">
+      The externally-reachable HTTPS address Coolify assigns this app. Qwen's servers fetch
+      converted video from here briefly during analysis — required, since Qwen only accepts
+      a public video URL, not a raw upload.
+    </p>
+
+    <button type="submit">Verify &amp; finish setup</button>
+  </form>
+</div>
+{% endblock %}

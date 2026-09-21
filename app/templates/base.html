@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}Qwen Video Classifier{% endblock %}</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+  {% if user %}
+  <div class="nav">
+    <a class="nav-brand" href="/">
+      <span class="dot"></span>
+      Qwen Video Classifier
+    </a>
+    <div class="nav-links">
+      <a href="/">Dashboard</a>
+      <a href="/settings">Settings</a>
+      <span class="user-badge">{{ user.username }}</span>
+      <a href="/logout">Log out</a>
+    </div>
+  </div>
+  {% endif %}
+  <div class="page {% block page_class %}{% endblock %}">
+    {% block content %}{% endblock %}
+  </div>
+  {% block scripts %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% block title %}Setup · Create account{% endblock %}
+{% block page_class %}page-narrow{% endblock %}
+{% block content %}
+<div class="wizard-steps">
+  <div class="wizard-step active"></div>
+  <div class="wizard-step"></div>
+  <div class="wizard-step"></div>
+</div>
+<div class="card">
+  <h1>Create your admin account</h1>
+  <p class="subtitle">Step 1 of 3 — this account protects the app. Nobody else can reach it without these credentials.</p>
+  {% if error %}<div class="alert alert-error">{{ error }}</div>{% endif %}
+  <form method="post" action="/setup/account">
+    <label for="username">Username</label>
+    <input type="text" id="username" name="username" autocomplete="username" required>
+    <label for="password">Password</label>
+    <input type="password" id="password" name="password" autocomplete="new-password" required minlength="8">
+    <label for="confirm">Confirm password</label>
+    <input type="password" id="confirm" name="confirm" autocomplete="new-password" required minlength="8">
+    <button type="submit">Continue</button>
+  </form>
+</div>
+{% endblock %}

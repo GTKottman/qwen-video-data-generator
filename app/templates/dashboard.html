@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="card">
+  <h1>Analyze a video</h1>
+  <p class="subtitle">
+    Upload a video. It's converted locally on this server (downscaled toward ~2GB, floor of 720p,
+    clipped to 2 hours if longer), sent to Qwen3.8-Omni-Flash for two-pass classification, then the
+    video is deleted — only the results and a thumbnail are kept.
+  </p>
+  <form method="post" action="/upload" enctype="multipart/form-data" id="upload-form">
+    <label for="title">Title (optional)</label>
+    <input type="text" id="title" name="title" placeholder="Untitled">
+    <label for="file">Video file</label>
+    <input type="file" id="file" name="file" accept=".mp4,.avi,.mkv,.mov,.flv,.wmv,.webm,.m4v" required>
+    <button type="submit" id="upload-btn">Upload &amp; analyze</button>
+  </form>
+</div>
+
+<div class="section-gap">
+  <h2>History</h2>
+  {% if not jobs %}
+  <p class="muted small">No videos processed yet.</p>
+  {% else %}
+  <div class="job-grid">
+    {% for job in jobs %}
+    <a class="job-card" href="/jobs/{{ job.id }}" style="display:block;">
+      {% if job.thumbnail_path %}
+      <img class="job-thumb" src="/jobs/{{ job.id }}/thumbnail" alt="">
+      {% else %}
+      <div class="job-thumb-empty">no preview</div>
+      {% endif %}
+      <div class="job-card-body">
+        <div class="job-title">{{ job.original_filename }}</div>
+        <div class="job-meta">
+          {% if job.status == 'done' %}<span class="badge badge-done">done</span>
+          {% elif job.status == 'error' %}<span class="badge badge-error">error</span>
+          {% else %}<span class="badge badge-progress">{{ job.status }}</span>{% endif %}
+          {% if job.safety_rating %}
+          <span class="badge {{ 'badge-safe' if job.safety_rating == 'safe' else 'badge-sensitive' }}">{{ job.safety_rating }}</span>
+          {% endif %}
+          {% if job.clipped %}<span class="small muted">clipped</span>{% endif %}
+        </div>
+      </div>
+    </a>
+    {% endfor %}
+  </div>
+  {% endif %}
+</div>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById('upload-form').addEventListener('submit', function () {
+  var btn = document.getElementById('upload-btn');
+  btn.disabled = true;
+  btn.textContent = 'Uploading…';
+});
+</script>
+{% endblock %}
