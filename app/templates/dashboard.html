@@ -20,6 +20,10 @@
              data-max-bytes="{{ max_upload_bytes }}" required style="display:none;">
     </div>
     <button type="submit" id="upload-btn">Upload</button>
+    <div class="progress-bar" id="upload-progress-wrap" style="display:none;">
+      <div class="progress-bar-fill" id="upload-progress-fill" style="width:0%;"></div>
+    </div>
+    <div class="upload-progress-label small muted" id="upload-progress-label" style="display:none;"></div>
   </form>
 </div>
 
@@ -98,14 +102,60 @@
     if (f) label.textContent = f.name;
   });
 
+  var progressWrap = document.getElementById('upload-progress-wrap');
+  var progressFill = document.getElementById('upload-progress-fill');
+  var progressLabel = document.getElementById('upload-progress-label');
+
+  function formatMB(bytes) { return (bytes / 1e6).toFixed(1) + 'MB'; }
+
   form.addEventListener('submit', function (evt) {
+    evt.preventDefault();
     if (!fileInput.files || !fileInput.files.length) {
-      evt.preventDefault();
       alert('Choose or drop a video first.');
       return;
     }
+
+    var file = fileInput.files[0];
     btn.disabled = true;
     btn.textContent = 'Uploading…';
+    progressWrap.style.display = '';
+    progressLabel.style.display = '';
+    progressFill.style.width = '0%';
+    progressFill.classList.remove('indeterminate');
+    progressLabel.textContent = '0% of ' + formatMB(file.size);
+
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', form.action, true);
+
+    xhr.upload.addEventListener('progress', function (e) {
+      if (!e.lengthComputable) return;
+      var pct = Math.round((e.loaded / e.total) * 100);
+      progressFill.style.width = pct + '%';
+      progressLabel.textContent = pct + '% of ' + formatMB(e.total) + ' (' + formatMB(e.loaded) + ' sent)';
+      if (pct >= 100) {
+        btn.textContent = 'Processing…';
+        progressFill.classList.add('indeterminate');
+        progressLabel.textContent = 'Upload complete — checking and processing video…';
+      }
+    });
+
+    xhr.addEventListener('load', function () {
+      // The server redirects on success (xhr follows it) or re-renders the
+      // dashboard with a 4xx status and an error alert on rejection.
+      document.open();
+      document.write(xhr.responseText);
+      document.close();
+    });
+
+    xhr.addEventListener('error', function () {
+      btn.disabled = false;
+      btn.textContent = 'Upload';
+      progressFill.classList.remove('indeterminate');
+      progressLabel.textContent = 'Upload failed — check your connection and try again.';
+    });
+
+    var formData = new FormData(form);
+    xhr.send(formData);
   });
 
   document.querySelectorAll('.copy-btn').forEach(function (b) {
